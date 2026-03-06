@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Learner - AI Powered</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Noto Sans JP', 'sans-serif'],
+                    },
+                    colors: {
+                        piano: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #f8fafc;
+        }
+        
+        /* Canvas Container with Dot Pattern */
+        .canvas-container {
+            background-color: #f1f5f9;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 0);
+            background-size: 20px 20px;
+            scroll-behavior: smooth;
+        }
+        
+        canvas {
+            display: block;
+            margin: 0 auto;
+            transform-origin: top left;
+            /* Add some padding feeling around canvas */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            background-color: #ffffff;
+        }
+
+        /* Custom Scrollbar for the whole page and panels */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        
+        /* Glassmorphism */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        /* Input Range Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 2px;
+        }
+
+        /* Toggle Button Styles */
+        .part-toggle.active {
+            background-color: #ecfeff;
+            border-color: #06b6d4;
+            color: #0891b2;
+        }
+        .part-toggle.inactive {
+            background-color: #f8fafc;
+            border-color: #cbd5e1;
+            color: #94a3b8;
+        }
+        
+        /* Pulse Animation */
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        .btn-pulse {
+            animation: pulse-border 2s infinite;
+        }
+    </style>
+</head>
+<!-- Removed h-screen and overflow-hidden to allow full page scrolling on mobile -->
+<body class="text-gray-800 min-h-screen flex flex-col font-sans">
+
+    <!-- Header (Sticky for mobile convenience) -->
+    <header class="bg-white/90 backdrop-blur-md shadow-sm z-30 sticky top-0 border-b border-gray-200">
+        <div class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-br from-blue-500 to-indigo-600 text-white p-2.5 rounded-xl shadow-md">
+                    <i class="fa-solid fa-music text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black text-gray-900 tracking-tight leading-none">Music Learner</h1>
+                    <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-0.5">AI Powered Assistant</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex items-center gap-2 text-sm font-medium text-gray-500 bg-gray-100 px-4 py-1.5 rounded-full border border-gray-200">
+                    <i class="fa-solid fa-microchip text-indigo-500"></i>
+                    Gemini 2.5 Flash
+                </div>
+                <label class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-sm font-bold transition flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
+                    <i class="fa-solid fa-camera"></i> <span class="hidden sm:inline">楽譜を読み込む</span><span class="sm:hidden">読み込む</span>
+                    <input type="file" id="imageInput" accept="image/jpeg, image/png, image/webp" class="hidden">
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow flex flex-col lg:flex-row max-w-[1400px] mx-auto w-full p-4 gap-4 h-auto">
+        
+        <!-- Score Display Area (Left) -->
+        <section class="flex-grow flex flex-col min-w-0 relative">
+            <!-- 
+                Mobile: Height is 60vh to allow scrolling down to controls. 
+                Desktop (lg): Height calculation to fit screen and allow internal scrolling.
+            -->
+            <div class="canvas-container relative h-[60vh] lg:h-[calc(100vh-6.5rem)] w-full rounded-2xl shadow-inner border border-gray-200 overflow-auto" id="canvasContainer">
+                
+                <!-- Zoom Controls Overlay -->
+                <div class="sticky top-4 left-0 w-full flex justify-end px-4 z-20 pointer-events-none" id="zoomControls" style="display: none;">
+                    <div class="flex gap-2 pointer-events-auto">
+                        <button id="btnZoomOut" class="w-10 h-10 bg-white/90 backdrop-blur border border-gray-200 text-gray-700 rounded-xl shadow-md hover:bg-gray-50 flex items-center justify-center transition active:scale-95" title="縮小">
+                            <i class="fa-solid fa-magnifying-glass-minus"></i>
+                        </button>
+                        <button id="btnZoomIn" class="w-10 h-10 bg-white/90 backdrop-blur border border-gray-200 text-gray-700 rounded-xl shadow-md hover:bg-gray-50 flex items-center justify-center transition active:scale-95" title="拡大">
+                            <i class="fa-solid fa-magnifying-glass-plus"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="min-h-full min-w-full flex items-center justify-center p-4">
+                    <canvas id="scoreCanvas"></canvas>
+                </div>
+                
+                <!-- Initial Placeholder -->
+                <div id="placeholderText" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 transition-opacity duration-300 pointer-events-none">
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center max-w-md mx-4 pointer-events-auto">
+                        <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500">
+                            <i class="fa-solid fa-file-image text-4xl"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-gray-800 mb-2">楽譜画像をアップロード</h2>
+                        <p class="text-sm text-gray-500 mb-6 leading-relaxed">カメラで撮影した楽譜や、スキャンした画像 (JPEG/PNG) を右上のボタンから読み込んでください。<br>ピンチアウトやボタンで拡大縮小・スクロールが可能です。</p>
+                    </div>
+                </div>
+
+                <!-- Analysis Overlay -->
+                <div id="analyzeOverlay" class="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-30 hidden">
+                    <div class="flex flex-col items-center bg-white p-6 rounded-2xl shadow-xl border border-gray-100">
+                        <i class="fa-solid fa-circle-notch fa-spin text-5xl text-indigo-600 mb-4"></i>
+                        <h3 class="text-lg font-bold text-gray-800">Gemini AI 解析中...</h3>
+                        <p class="text-sm text-gray-500 mt-2">音符、リズム、小節を読み取っています</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Control Panel (Right/Bottom) -->
+        <section class="w-full lg:w-[380px] flex flex-col gap-4 flex-shrink-0 lg:overflow-y-auto lg:h-[calc(100vh-6.5rem)] custom-scrollbar pb-6 lg:pb-2">
+            
+            <!-- AI Setup -->
+            <div class="glass-panel p-4 rounded-2xl">
+                <h3 class="text-xs font-bold mb-3 text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-key text-gray-400"></i> AI 初期設定
+                </h3>
+                <div class="flex gap-2">
+                    <input type="password" id="geminiApiKey" placeholder="Gemini API Key" class="flex-grow border border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50">
+                    <button id="btnAnalyze" class="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-bold py-2 px-4 rounded-lg transition text-sm flex items-center gap-2 whitespace-nowrap shadow-md">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> 解析
+                    </button>
+                </div>
+                <div id="analyzeError" class="text-xs text-red-500 mt-2 font-medium hidden"></div>
+            </div>
+
+            <!-- Main Playback Controls -->
+            <div class="glass-panel p-5 rounded-2xl relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 to-indigo-500"></div>
+                <h3 class="text-xs font-bold mb-4 text-gray-500 uppercase tracking-wider">再生コントロール</h3>
+                
+                <div class="flex justify-center items-center gap-3 mb-6">
+                    <button id="btnRewind" class="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition shadow-sm border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" title="最初に戻る" disabled>
+                         <i class="fa-solid fa-backward-fast"></i>
+                    </button>
+                    <button id="btnPrevMeasure" class="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition shadow-sm border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" title="前の小節" disabled>
+                        <i class="fa-solid fa-backward-step"></i>
+                   </button>
+                    
+                    <button id="btnPlayPause" class="w-16 h-16 rounded-full bg-blue-600 hover:bg-blue-700 flex items-center justify-center text-white shadow-lg transition transform hover:scale-105 active:scale-95 disabled:bg-gray-300 disabled:scale-100 disabled:cursor-not-allowed mx-2" disabled>
+                        <i class="fa-solid fa-play text-2xl ml-1" id="playIcon"></i>
+                    </button>
+                    
+                    <button id="btnNextMeasure" class="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition shadow-sm border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" title="次の小節" disabled>
+                        <i class="fa-solid fa-forward-step"></i>
+                   </button>
+                    <button id="btnStop" class="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition shadow-sm border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed" title="停止" disabled>
+                        <i class="fa-solid fa-stop"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Tempo -->
+                    <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs font-bold text-gray-600 flex items-center gap-1.5"><i class="fa-solid fa-gauge-high text-blue-500"></i> テンポ</label>
+                            <div class="bg-white px-2 py-0.5 rounded border text-sm font-bold text-blue-600 w-16 text-center shadow-sm">
+                                <span id="tempoValue">100</span> <span class="text-[10px] text-gray-400">BPM</span>
+                            </div>
+                        </div>
+                        <input type="range" id="tempoSlider" min="40" max="240" value="100">
+                    </div>
+
+                    <!-- Master Volume -->
+                    <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs font-bold text-gray-600 flex items-center gap-1.5"><i class="fa-solid fa-volume-high text-indigo-500"></i> 全体音量</label>
+                            <span id="volumeValue" class="text-xs font-bold text-gray-500">80%</span>
+                        </div>
+                        <input type="range" id="volumeSlider" min="0" max="100" value="80">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Part Controls -->
+            <div class="glass-panel p-5 rounded-2xl">
+                <h3 class="text-xs font-bold mb-4 text-gray-500 uppercase tracking-wider">パート別設定 (左右独立)</h3>
+                
+                <div class="space-y-3">
+                    <!-- Right Hand -->
+                    <div class="border border-gray-200 rounded-xl p-3 bg-white shadow-sm">
+                        <div class="flex justify-between items-center mb-2">
+                            <button id="btnRightHand" class="part-toggle active px-3 py-1.5 rounded-lg text-sm font-bold transition border-2 flex items-center gap-2">
+                                <i class="fa-regular fa-hand"></i> 右手 (主旋律)
+                            </button>
+                            <span id="volRightValue" class="text-xs font-bold text-gray-400 w-8 text-right">100%</span>
+                        </div>
+                        <div class="px-1 flex items-center gap-2">
+                            <i class="fa-solid fa-volume-low text-xs text-gray-300"></i>
+                            <input type="range" id="volRightSlider" min="0" max="100" value="100">
+                        </div>
+                    </div>
+
+                    <!-- Left Hand -->
+                    <div class="border border-gray-200 rounded-xl p-3 bg-white shadow-sm">
+                        <div class="flex justify-between items-center mb-2">
+                            <button id="btnLeftHand" class="part-toggle active px-3 py-1.5 rounded-lg text-sm font-bold transition border-2 flex items-center gap-2">
+                                <i class="fa-solid fa-hand"></i> 左手 (伴奏)
+                            </button>
+                            <span id="volLeftValue" class="text-xs font-bold text-gray-400 w-8 text-right">80%</span>
+                        </div>
+                        <div class="px-1 flex items-center gap-2">
+                            <i class="fa-solid fa-volume-low text-xs text-gray-300"></i>
+                            <input type="range" id="volLeftSlider" min="0" max="100" value="80">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Display Settings -->
+            <div class="glass-panel p-4 rounded-2xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="text-sm font-bold text-gray-700 block">自動追従ハイライト</span>
+                        <span class="text-[10px] text-gray-500">再生位置を視覚的にガイド・スクロール</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="highlightToggle" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- JavaScript -->
+    <script>
+        // DOM Elements
+        const imageInput = document.getElementById('imageInput');
+        const canvas = document.getElementById('scoreCanvas');
+        const ctx = canvas.getContext('2d');
+        const placeholderText = document.getElementById('placeholderText');
+        const canvasContainer = document.getElementById('canvasContainer');
+        const analyzeOverlay = document.getElementById('analyzeOverlay');
+        
+        const btnAnalyze = document.getElementById('btnAnalyze');
+        const geminiApiKey = document.getElementById('geminiApiKey');
+        const analyzeError = document.getElementById('analyzeError');
+
+        // Playback UI
+        const btnPlayPause = document.getElementById('btnPlayPause');
+        const playIcon = document.getElementById('playIcon');
+        const btnStop = document.getElementById('btnStop');
+        const btnRewind = document.getElementById('btnRewind');
+        const btnPrevMeasure = document.getElementById('btnPrevMeasure');
+        const btnNextMeasure = document.getElementById('btnNextMeasure');
+        
+        const tempoSlider = document.getElementById('tempoSlider');
+        const tempoValue = document.getElementById('tempoValue');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const volumeValue = document.getElementById('volumeValue');
+        
+        const btnLeftHand = document.getElementById('btnLeftHand');
+        const btnRightHand = document.getElementById('btnRightHand');
+        const volLeftSlider = document.getElementById('volLeftSlider');
+        const volLeftValue = document.getElementById('volLeftValue');
+        const volRightSlider = document.getElementById('volRightSlider');
+        const volRightValue = document.getElementById('volRightValue');
+        
+        const highlightToggle = document.getElementById('highlightToggle');
+        
+        // Zoom Controls
+        const btnZoomIn = document.getElementById('btnZoomIn');
+        const btnZoomOut = document.getElementById('btnZoomOut');
+        const zoomControls = document.getElementById('zoomControls');
+
+        // State
+        let isPlaying = false;
+        let img = new Image();
+        let imageLoaded = false;
+        let animationId;
+        
+        // Zoom State
+        let currentScale = 1;
+        const ZOOM_STEP = 0.25;
+        const MAX_SCALE = 4.0;
+        const MIN_SCALE = 0.2;
+        
+        // Music Data State
+        let measuresData = [];
+        let currentMeasureIndex = 0;
+        let beatProgress = 0; // 0.0 to 1.0 inside measure
+        let lastTimestamp = 0;
+
+        // Parts State
+        let playLeftHand = true;
+        let playRightHand = true;
+
+        // Audio Context
+        let audioCtx;
+
+        // Init App
+        initStorage();
+        attachEventListeners();
+
+        function initStorage() {
+            const savedKey = localStorage.getItem('geminiApiKey');
+            if (savedKey) geminiApiKey.value = savedKey;
+        }
+
+        function attachEventListeners() {
+            geminiApiKey.addEventListener('change', (e) => localStorage.setItem('geminiApiKey', e.target.value));
+
+            imageInput.addEventListener('change', handleImageUpload);
+            window.addEventListener('resize', () => {
+                if(imageLoaded) { drawScore(); }
+            });
+
+            btnAnalyze.addEventListener('click', runAnalysis);
+
+            btnPlayPause.addEventListener('click', togglePlay);
+            btnStop.addEventListener('click', stopPlay);
+            btnRewind.addEventListener('click', () => { stopPlay(); });
+            btnPrevMeasure.addEventListener('click', () => skipMeasure(-1));
+            btnNextMeasure.addEventListener('click', () => skipMeasure(1));
+
+            // Sliders
+            tempoSlider.addEventListener('input', e => tempoValue.textContent = e.target.value);
+            volumeSlider.addEventListener('input', e => volumeValue.textContent = e.target.value + '%');
+            volRightSlider.addEventListener('input', e => volRightValue.textContent = e.target.value + '%');
+            volLeftSlider.addEventListener('input', e => volLeftValue.textContent = e.target.value + '%');
+
+            // Part Toggles
+            btnLeftHand.addEventListener('click', () => {
+                playLeftHand = !playLeftHand;
+                updatePartBtnUI(btnLeftHand, playLeftHand);
+            });
+            btnRightHand.addEventListener('click', () => {
+                playRightHand = !playRightHand;
+                updatePartBtnUI(btnRightHand, playRightHand);
+            });
+
+            highlightToggle.addEventListener('change', drawScore);
+            
+            // Zoom Actions
+            btnZoomIn.addEventListener('click', () => {
+                currentScale = Math.min(MAX_SCALE, currentScale + ZOOM_STEP);
+                updateCanvasSize();
+            });
+
+            btnZoomOut.addEventListener('click', () => {
+                currentScale = Math.max(MIN_SCALE, currentScale - ZOOM_STEP);
+                updateCanvasSize();
+            });
+        }
+
+        // --- Image Handling ---
+
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                img.onload = () => {
+                    imageLoaded = true;
+                    placeholderText.style.opacity = '0';
+                    setTimeout(() => placeholderText.style.display = 'none', 300);
+                    zoomControls.style.display = 'flex';
+                    
+                    stopPlay(); 
+                    measuresData = []; 
+                    disablePlaybackControls();
+                    
+                    fitToContainer();
+                    
+                    btnAnalyze.classList.add('btn-pulse');
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        function fitToContainer() {
+            if (!imageLoaded) return;
+            // padding consideration
+            const containerWidth = canvasContainer.clientWidth - 32; 
+            currentScale = containerWidth / img.width;
+            if (currentScale > MAX_SCALE) currentScale = MAX_SCALE;
+            updateCanvasSize();
+        }
+
+        function updateCanvasSize() {
+            if (!imageLoaded) return;
+            canvas.width = img.width * currentScale;
+            canvas.height = img.height * currentScale;
+            ctx.setTransform(currentScale, 0, 0, currentScale, 0, 0);
+            drawScore();
+        }
+
+        function drawScore() {
+            if (!imageLoaded) return;
+            ctx.clearRect(0, 0, canvas.width / currentScale, canvas.height / currentScale);
+            ctx.drawImage(img, 0, 0);
+
+            if (measuresData.length > 0 && highlightToggle.checked) {
+                if (isPlaying || currentMeasureIndex > 0) {
+                    drawHighlight();
+                } else {
+                    drawAllBoxes(); // Static view when parsed but not playing
+                }
+            }
+        }
+
+        function drawAllBoxes() {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(167, 139, 250, 0.4)'; // Light purple
+            ctx.lineWidth = 2 / currentScale;
+            measuresData.forEach((m, idx) => {
+                ctx.strokeRect(m.box.x, m.box.y, m.box.w, m.box.h);
+                // Measure Number
+                ctx.fillStyle = 'rgba(167, 139, 250, 0.8)';
+                ctx.font = `${16/currentScale}px sans-serif`;
+                ctx.fillText(idx + 1, m.box.x + 4, m.box.y + (16/currentScale));
+            });
+            ctx.restore();
+        }
+
+        function drawHighlight() {
+            const measure = measuresData[currentMeasureIndex];
+            if (!measure) return;
+            const box = measure.box;
+
+            ctx.save();
+            // Measure Area Highlight
+            ctx.fillStyle = 'rgba(59, 130, 246, 0.15)'; 
+            ctx.fillRect(box.x, box.y, box.w, box.h);
+            
+            // Measure Border
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.9)';
+            ctx.lineWidth = 3 / currentScale;
+            ctx.strokeRect(box.x, box.y, box.w, box.h);
+
+            // Playhead Line
+            if (isPlaying) {
+                const playheadX = box.x + (box.w * beatProgress);
+                ctx.beginPath();
+                ctx.moveTo(playheadX, box.y - (10/currentScale));
+                ctx.lineTo(playheadX, box.y + box.h + (10/currentScale));
+                
+                ctx.strokeStyle = '#ef4444'; // Red playhead
+                ctx.lineWidth = 4 / currentScale;
+                ctx.shadowColor = 'rgba(239, 68, 68, 0.5)';
+                ctx.shadowBlur = 8;
+                ctx.stroke();
+            }
+            ctx.restore();
+            
+            // Auto Scroll logic
+            if (isPlaying) {
+                const scaledY = box.y * currentScale;
+                const scaledX = box.x * currentScale;
+                const containerHeight = canvasContainer.clientHeight;
+                const containerWidth = canvasContainer.clientWidth;
+                const scrollTop = canvasContainer.scrollTop;
+                const scrollLeft = canvasContainer.scrollLeft;
+                
+                // Vertical Auto Scroll
+                if (scaledY > scrollTop + containerHeight * 0.7 || scaledY < scrollTop + containerHeight * 0.2) {
+                     canvasContainer.scrollTo({ top: scaledY - (containerHeight * 0.3), behavior: 'smooth' });
+                }
+                
+                // Horizontal Auto Scroll (useful when zoomed in)
+                if (scaledX > scrollLeft + containerWidth * 0.8 || scaledX < scrollLeft + containerWidth * 0.1) {
+                     canvasContainer.scrollTo({ left: Math.max(0, scaledX - (containerWidth * 0.2)), behavior: 'smooth' });
+                }
+            }
+        }
+
+        // --- Gemini AI Analysis ---
+
+        function getResizedBase64() {
+            const maxDim = 2048; // Max resolution for API
+            let w = img.width;
+            let h = img.height;
+            if (w > maxDim || h > maxDim) {
+                if (w > h) { h = (h / w) * maxDim; w = maxDim; } 
+                else { w = (w / h) * maxDim; h = maxDim; }
+            }
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = w;
+            tempCanvas.height = h;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.fillStyle = '#fff';
+            tempCtx.fillRect(0,0,w,h);
+            tempCtx.drawImage(img, 0, 0, w, h);
+            return tempCanvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+        }
+
+        async function runAnalysis() {
+            if (!imageLoaded) {
+                alert('先に楽譜画像を読み込んでください。');
+                return;
+            }
+            const apiKey = geminiApiKey.value.trim();
+            if (!apiKey) {
+                alert('Gemini API Keyを入力してください。');
+                geminiApiKey.focus();
+                return;
+            }
+
+            btnAnalyze.disabled = true;
+            btnAnalyze.classList.remove('btn-pulse');
+            analyzeOverlay.classList.remove('hidden');
+            analyzeError.classList.add('hidden');
+            
+            measuresData = [];
+            disablePlaybackControls();
+            drawScore();
+
+            try {
+                const base64Data = getResizedBase64();
+                
+                const promptText = `
+You are a highly capable sheet music OCR AI. 
+Analyze this sheet music image for piano.
+For each measure (bar) in reading order (left to right, top to bottom), extract its bounding box and the musical notes for the right hand (treble clef) and left hand (bass clef).
+
+Requirements:
+- Bounding box format: [ymin, xmin, ymax, xmax] using integers 0 to 1000 representing relative coordinates.
+- Note format: {"note": "C4", "duration": 1.0} where duration is in quarter notes (e.g. quarter=1.0, half=2.0, eighth=0.5). Use "rest" for silence.
+- Try to read the notes accurately.
+
+Output ONLY valid JSON matching exactly this structure. Do not include markdown formatting or \`\`\`json blocks.
+{
+  "measures": [
+    {
+      "box": [100, 50, 200, 300],
+      "rightHand": [ {"note": "E4", "duration": 1.0}, {"note": "rest", "duration": 1.0} ],
+      "leftHand": [ {"note": "C3", "duration": 2.0} ]
+    }
+  ]
+}`;
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: promptText },
+                                { inlineData: { mimeType: "image/jpeg", data: base64Data } }
+                            ]
+                        }],
+                        generationConfig: { temperature: 0.1, responseMimeType: "application/json" }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(`API Error: ${response.status} ${errData.error?.message || ''}`);
+                }
+                
+                const data = await response.json();
+                let jsonStr = data.candidates[0].content.parts[0].text;
+                
+                // Cleanup json string just in case
+                jsonStr = jsonStr.replace(/```json/gi, '').replace(/```/g, '').trim();
+                
+                const parsedData = JSON.parse(jsonStr);
+                processParsedData(parsedData);
+                
+                if(measuresData.length === 0) throw new Error("解析結果が空です");
+
+                enablePlaybackControls();
+                drawScore();
+            } catch (err) {
+                console.error("Analysis Failed:", err);
+                analyzeError.textContent = `解析失敗: ${err.message} (デモ用モックデータを読み込みます)`;
+                analyzeError.classList.remove('hidden');
+                
+                // Fallback Mock Data for UX
+                generateMockData();
+                enablePlaybackControls();
+                drawScore();
+            } finally {
+                btnAnalyze.disabled = false;
+                analyzeOverlay.classList.add('hidden');
+            }
+        }
+
+        function processParsedData(parsedData) {
+            measuresData = [];
+            if (!parsedData.measures || !Array.isArray(parsedData.measures)) return;
+
+            parsedData.measures.forEach(m => {
+                let currentRightBeat = 0;
+                const rightNotes = (m.rightHand || []).map(n => {
+                    const startBeat = currentRightBeat;
+                    const dur = Number(n.duration) || 1;
+                    currentRightBeat += dur;
+                    return { note: n.note, duration: dur, startBeat: startBeat, played: false };
+                });
+                
+                let currentLeftBeat = 0;
+                const leftNotes = (m.leftHand || []).map(n => {
+                    const startBeat = currentLeftBeat;
+                    const dur = Number(n.duration) || 1;
+                    currentLeftBeat += dur;
+                    return { note: n.note, duration: dur, startBeat: startBeat, played: false };
+                });
+                
+                // Use max beats or default 4/4
+                const beats = Math.max(currentRightBeat, currentLeftBeat) || 4; 
+                
+                // Convert bounding box from 1000-scale to actual image pixels
+                let x=0, y=0, w=100, h=100;
+                if (m.box && m.box.length === 4) {
+                    const [ymin, xmin, ymax, xmax] = m.box;
+                    x = (xmin / 1000) * img.width;
+                    y = (ymin / 1000) * img.height;
+                    w = ((xmax - xmin) / 1000) * img.width;
+                    h = ((ymax - ymin) / 1000) * img.height;
+                }
+
+                measuresData.push({
+                    box: { x, y, w, h, beats },
+                    rightNotes,
+                    leftNotes
+                });
+            });
+            
+            // Sort by Y then X to ensure proper reading order
+            measuresData.sort((a, b) => {
+                if (Math.abs(a.box.y - b.box.y) > a.box.h * 0.5) {
+                    return a.box.y - b.box.y;
+                }
+                return a.box.x - b.box.x;
+            });
+        }
+
+        function generateMockData() {
+            measuresData = [];
+            const measuresPerRow = 3;
+            const rows = Math.floor(img.height / 300) || 1;
+            const startX = img.width * 0.1;
+            const usableWidth = img.width * 0.8;
+            const measureWidth = usableWidth / measuresPerRow;
+            const rowHeight = img.height / (rows + 1);
+
+            for(let r=0; r<rows; r++) {
+                for(let m=0; m<measuresPerRow; m++) {
+                    const isEven = (r*measuresPerRow+m) % 2 === 0;
+                    measuresData.push({
+                        box: {
+                            x: startX + (m * measureWidth), y: (r * rowHeight) + (rowHeight * 0.2), 
+                            w: measureWidth, h: rowHeight * 0.7, beats: 4
+                        },
+                        rightNotes: [
+                            { note: isEven ? 'C4' : 'G4', duration: 1, startBeat: 0, played: false },
+                            { note: isEven ? 'D4' : 'F4', duration: 1, startBeat: 1, played: false },
+                            { note: isEven ? 'E4' : 'E4', duration: 1, startBeat: 2, played: false },
+                            { note: isEven ? 'C4' : 'D4', duration: 1, startBeat: 3, played: false }
+                        ],
+                        leftNotes: [
+                            { note: 'C3', duration: 2, startBeat: 0, played: false },
+                            { note: 'G2', duration: 2, startBeat: 2, played: false }
+                        ]
+                    });
+                }
+            }
+        }
+
+        // --- Playback UI Controls ---
+
+        function enablePlaybackControls() {
+            btnPlayPause.disabled = false;
+            btnStop.disabled = false;
+            btnRewind.disabled = false;
+            btnPrevMeasure.disabled = false;
+            btnNextMeasure.disabled = false;
+            btnPlayPause.classList.add('btn-pulse');
+        }
+
+        function disablePlaybackControls() {
+            btnPlayPause.disabled = true;
+            btnStop.disabled = true;
+            btnRewind.disabled = true;
+            btnPrevMeasure.disabled = true;
+            btnNextMeasure.disabled = true;
+            btnPlayPause.classList.remove('btn-pulse');
+        }
+
+        function updatePartBtnUI(btn, isActive) {
+            if (isActive) {
+                btn.classList.add('active');
+                btn.classList.remove('inactive');
+                btn.innerHTML = btn.innerHTML.replace('fa-hand-slash', 'fa-hand');
+            } else {
+                btn.classList.remove('active');
+                btn.classList.add('inactive');
+            }
+        }
+
+        // --- Audio Logic ---
+
+        function noteToFreq(note) {
+            if (!note || note.toLowerCase() === 'rest') return 0;
+            const notes = { 'C': -9, 'C#': -8, 'D': -7, 'D#': -6, 'E': -5, 'F': -4, 'F#': -3, 'G': -2, 'G#': -1, 'A': 0, 'A#': 1, 'B': 2 };
+            const match = note.match(/([A-G]#?)(\d)/i);
+            if (!match) return 0;
+            const n = notes[match[1].toUpperCase()];
+            const octave = parseInt(match[2], 10);
+            const halfStepsFromA4 = n + (octave - 4) * 12;
+            return 440 * Math.pow(2, halfStepsFromA4 / 12);
+        }
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if(audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playPianoTone(freq, durationMs, part = 'right') {
+            if (!audioCtx || freq === 0) return;
+            
+            const masterVol = parseInt(volumeSlider.value) / 100;
+            if (masterVol === 0) return;
+
+            const partVol = part === 'right' ? (parseInt(volRightSlider.value) / 100) : (parseInt(volLeftSlider.value) / 100);
+            if (partVol === 0) return;
+
+            const maxGain = masterVol * partVol * 0.6;
+            const durSeconds = durationMs / 1000;
+            const now = audioCtx.currentTime;
+
+            const osc1 = audioCtx.createOscillator();
+            osc1.type = part === 'right' ? 'sine' : 'triangle';
+            osc1.frequency.setValueAtTime(freq, now);
+
+            const osc2 = audioCtx.createOscillator();
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(freq * 2, now);
+
+            const gainNode = audioCtx.createGain();
+            
+            osc1.connect(gainNode);
+            osc2.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(maxGain, now + 0.015);
+            gainNode.gain.exponentialRampToValueAtTime(maxGain * 0.3, now + 0.1);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + durSeconds + 0.1);
+
+            osc1.start(now);
+            osc2.start(now);
+            osc1.stop(now + durSeconds + 0.2);
+            osc2.stop(now + durSeconds + 0.2);
+        }
+
+        // --- Playback Engine ---
+
+        function togglePlay() {
+            if (measuresData.length === 0) return;
+
+            isPlaying = !isPlaying;
+            btnPlayPause.classList.remove('btn-pulse');
+
+            if (isPlaying) {
+                playIcon.classList.remove('fa-play', 'ml-1');
+                playIcon.classList.add('fa-pause');
+                btnPlayPause.classList.replace('bg-blue-600', 'bg-red-500');
+                btnPlayPause.classList.replace('hover:bg-blue-700', 'hover:bg-red-600');
+                
+                lastTimestamp = performance.now();
+                initAudio(); 
+                animationId = requestAnimationFrame(animationLoop);
+            } else {
+                pausePlay();
+            }
+        }
+
+        function pausePlay() {
+            isPlaying = false;
+            playIcon.classList.remove('fa-pause');
+            playIcon.classList.add('fa-play', 'ml-1');
+            btnPlayPause.classList.replace('bg-red-500', 'bg-blue-600');
+            btnPlayPause.classList.replace('hover:bg-red-600', 'hover:bg-blue-700');
+            cancelAnimationFrame(animationId);
+            drawScore();
+        }
+
+        function stopPlay() {
+            pausePlay();
+            currentMeasureIndex = 0;
+            beatProgress = 0;
+            resetPlayedFlags();
+            drawScore();
+            canvasContainer.scrollTo({top: 0, left: 0, behavior: 'smooth'});
+        }
+
+        function skipMeasure(offset) {
+            currentMeasureIndex += offset;
+            
+            if (currentMeasureIndex < 0) {
+                currentMeasureIndex = 0;
+            } else if (currentMeasureIndex >= measuresData.length) {
+                currentMeasureIndex = measuresData.length - 1;
+            }
+            
+            beatProgress = 0;
+            resetPlayedFlagsAfter(currentMeasureIndex);
+            
+            if (!isPlaying) {
+                drawScore();
+            }
+        }
+
+        function resetPlayedFlags() {
+            measuresData.forEach(m => {
+                m.rightNotes.forEach(n => n.played = false);
+                m.leftNotes.forEach(n => n.played = false);
+            });
+        }
+        
+        function resetPlayedFlagsAfter(index) {
+            for(let i = index; i < measuresData.length; i++) {
+                measuresData[i].rightNotes.forEach(n => n.played = false);
+                measuresData[i].leftNotes.forEach(n => n.played = false);
+            }
+        }
+
+        function animationLoop(timestamp) {
+            if (!isPlaying) return;
+
+            const delta = timestamp - lastTimestamp;
+            lastTimestamp = timestamp;
+
+            const bpm = parseInt(tempoSlider.value);
+            const beatsPerSecond = bpm / 60;
+            
+            const measure = measuresData[currentMeasureIndex];
+            if (!measure) {
+                stopPlay();
+                return;
+            }
+
+            const beatsInMeasure = measure.box.beats;
+            const measureDurationMs = (beatsInMeasure / beatsPerSecond) * 1000;
+            
+            beatProgress += delta / measureDurationMs;
+            const currentBeatInMeasure = beatProgress * beatsInMeasure;
+
+            if (playRightHand) {
+                measure.rightNotes.forEach(n => {
+                    if (!n.played && currentBeatInMeasure >= n.startBeat) {
+                        n.played = true;
+                        playPianoTone(noteToFreq(n.note), (n.duration / beatsPerSecond) * 1000, 'right');
+                    }
+                });
+            }
+            if (playLeftHand) {
+                measure.leftNotes.forEach(n => {
+                    if (!n.played && currentBeatInMeasure >= n.startBeat) {
+                        n.played = true;
+                        playPianoTone(noteToFreq(n.note), (n.duration / beatsPerSecond) * 1000, 'left');
+                    }
+                });
+            }
+
+            if (beatProgress >= 1.0) {
+                beatProgress = 0;
+                currentMeasureIndex++;
+                if (currentMeasureIndex >= measuresData.length) {
+                    stopPlay(); 
+                    return;
+                }
+            }
+
+            drawScore();
+            animationId = requestAnimationFrame(animationLoop);
+        }
+
+    </script>
+</body>
+</html>
